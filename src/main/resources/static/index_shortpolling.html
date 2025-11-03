@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Short Polling Chat Demo</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 2rem auto; }
+        #shortpoll-chat { border: 1px solid #ccc; height: 300px; overflow-y: auto; padding: 10px; }
+        #shortpoll-input { margin-top: 1rem; display: flex; gap: 10px; }
+        input, button { padding: 6px; font-size: 1rem; }
+    </style>
+</head>
+<body>
+<h2>Short Polling Chat Example</h2>
+<div>
+    <input id="shortpoll-username" placeholder="Your name" />
+</div>
+<div id="shortpoll-chat"></div>
+<div id="shortpoll-input">
+    <input id="shortpoll-message" placeholder="Type a message..." />
+    <button id="shortpoll-send">Send</button>
+</div>
+
+<script>
+    const shortpollApiUrl = "http://localhost:8080/api/shortpoll/messages";
+    let lastMessageTimestamp = 0;
+    const chatBox = document.getElementById("shortpoll-chat");
+    const usernameField = document.getElementById("shortpoll-username");
+    const messageField = document.getElementById("shortpoll-message");
+
+    // Poll the server for new messages
+    async function pollMessages() {
+      try {
+        const res = await fetch(`${shortpollApiUrl}?since=${lastMessageTimestamp}`);
+        const newMessages = await res.json();
+
+        if (newMessages.length > 0) {
+          newMessages.forEach(msg => renderMessage(msg));
+          lastMessageTimestamp = newMessages[newMessages.length - 1].timestamp;
+        }
+      } catch (err) {
+        console.error("Short polling error:", err);
+      }
+    }
+
+    // Append a message to the chat UI
+    function renderMessage(msg) {
+      const div = document.createElement("div");
+      const time = new Date(msg.timestamp).toLocaleTimeString();
+      div.textContent = `[${time}] ${msg.username}: ${msg.text}`;
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Send message using POST
+    document.getElementById("shortpoll-send").onclick = async () => {
+      const username = usernameField.value.trim();
+      const text = messageField.value.trim();
+      if (!username || !text) return;
+
+      await fetch(shortpollApiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, text })
+      });
+      messageField.value = "";
+    };
+
+    // Start polling every 2 seconds
+    setInterval(pollMessages, 2000);
+</script>
+</body>
+</html>
